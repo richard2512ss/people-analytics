@@ -5,7 +5,8 @@ built to support HR decision-making. The tool uses a logistic regression model
 trained on employee data, allowing HR to explore how different factors — such as
 overtime, income, tenure, and job satisfaction — affect the likelihood of attrition.
 
-![Screenshot](images/screenshot.png)
+<img width="703" height="558" alt="image" src="https://github.com/user-attachments/assets/8848fb2e-7c24-4152-9030-3ef4b3ff8b1d" />
+
 
 ## Features
 
