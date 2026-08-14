@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Employee Attrition Probability Simulator</title>
+<style>
+  :root {
+    --bg: #f5f5f4;
+    --card: #ffffff;
+    --border: #e0e0dc;
+    --text: #1a1a18;
+    --text-secondary: #6b6b66;
+    --accent: #185fa5;
+    --accent-bg: #e6f1fb;
+    --success: #27500a;
+    --success-bg: #eaf3de;
+    --warning: #854f0b;
+    --warning-bg: #faeeda;
+    --danger: #791f1f;
+    --danger-bg: #fcebeb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 0 1rem 2rem;
+    display: flex;
+    justify-content: center;
+  }
+  .wrap { width: 100%; max-width: 640px; }
+  h1 { font-size: 20px; font-weight: 600; margin: 1.5rem 0 4px; }
+  .subtitle { font-size: 14px; color: var(--text-secondary); margin: 0 0 1rem; }
+
+  /* Sticky probability bar - always visible on screen */
+  .sticky-result {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0 0 1.5rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  }
+  .result-label { font-size: 13px; color: var(--text-secondary); }
+  .result-value { font-size: 32px; font-weight: 600; line-height: 1; }
+  .result-tag {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .field { margin-bottom: 1.1rem; }
+  .field:last-child { margin-bottom: 0; }
+  .field-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .field-label { font-size: 14px; color: var(--text-secondary); }
+  .field-value { font-size: 14px; font-weight: 600; }
+  input[type="range"] {
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    outline: none;
+    -webkit-appearance: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: none;
+  }
+  .btn-group {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .btn-group button {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 8px 4px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text);
+    border-left: 1px solid var(--border);
+    font-family: inherit;
+  }
+  .btn-group button:first-child { border-left: none; }
+  .btn-group button.active {
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin: 1.5rem 0 0.6rem;
+  }
+  .footnote {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 1.5rem;
+    line-height: 1.6;
+  }
+  .footnote code {
+    background: var(--border);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 11px;
+  }
+  .footnote a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .footnote a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Employee Attrition Probability Simulator</h1>
+  <p class="subtitle">Based on a logistic regression model trained on the IBM HR Analytics Employee Attrition Dataset.</p>
+
+  <!-- Always-visible probability, sticky at the top of the viewport -->
+  <div class="sticky-result">
+    <div>
+      <div class="result-label">Probability of leaving</div>
+      <div id="prob-out" class="result-value">--%</div>
+    </div>
+    <span id="prob-tag" class="result-tag">--</span>
+  </div>
+
+  <div class="card">
+    <div class="field">
+      <div class="field-row">
+        <span class="field-label">Age</span>
+        <span id="age-out" class="field-value">33 years</span>
+      </div>
+      <input type="range" id="age" min="18" max="60" step="1" value="33">
+    </div>
+
+    <div class="field">
+      <div class="field-row">
+        <span class="field-label">Monthly income</span>
+        <span id="income-out" class="field-value">$5,000</span>
+      </div>
+      <input type="range" id="income" min="1000" max="20000" step="100" value="5000">
+    </div>
+
+    <div class="field">
+      <div class="field-row">
+        <span class="field-label">Distance from home</span>
+        <span id="distance-out" class="field-value">9 km</span>
+      </div>
+      <input type="range" id="distance" min="1" max="29" step="1" value="9">
+    </div>
+
+    <div class="field">
+      <div class="field-row">
+        <span class="field-label">Years at company</span>
+        <span id="years-out" class="field-value">7 years</span>
+      </div>
+      <input type="range" id="years" min="0" max="40" step="1" value="7">
+    </div>
+
+    <div class="field">
+      <div class="field-row">
+        <span class="field-label">Years since last promotion</span>
+        <span id="promo-out" class="field-value">2 years</span>
+      </div>
+      <input type="range" id="promo" min="0" max="15" step="1" value="2">
+    </div>
+
+    <div class="field">
+      <div class="field-row">
+        <span class="field-label">Number of companies worked</span>
+        <span id="companies-out" class="field-value">2</span>
+      </div>
+      <input type="range" id="companies" min="0" max="9" step="1" value="2">
+    </div>
+  </div>
+
+  <div class="section-title">Work</div>
+  <div class="card">
+    <div class="field">
+      <div class="field-row"><span class="field-label">Business travel</span></div>
+      <div class="btn-group" id="travel">
+        <button data-val="none">Non-Travel</button>
+        <button data-val="freq">Frequently</button>
+        <button data-val="rare">Rarely</button>
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-row"><span class="field-label">Works overtime</span></div>
+      <div class="btn-group" id="overtime">
+        <button data-val="yes">Yes</button>
+        <button data-val="no">No</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Satisfaction & involvement (1 to 4)</div>
+  <div class="card">
+    <div class="field">
+      <div class="field-row"><span class="field-label">Job involvement</span></div>
+      <div class="btn-group" id="involvement">
+        <button data-val="1">Low</button>
+        <button data-val="2">Medium</button>
+        <button data-val="3">High</button>
+        <button data-val="4">Very High</button>
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-row"><span class="field-label">Work-life balance</span></div>
+      <div class="btn-group" id="worklife">
+        <button data-val="1">Bad</button>
+        <button data-val="2">Good</button>
+        <button data-val="3">Better</button>
+        <button data-val="4">Best</button>
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-row"><span class="field-label">Environment satisfaction</span></div>
+      <div class="btn-group" id="envsat">
+        <button data-val="1">Low</button>
+        <button data-val="2">Medium</button>
+        <button data-val="3">High</button>
+        <button data-val="4">Very High</button>
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-row"><span class="field-label">Job satisfaction</span></div>
+      <div class="btn-group" id="jobsat">
+        <button data-val="1">Low</button>
+        <button data-val="2">Medium</button>
+        <button data-val="3">High</button>
+        <button data-val="4">Very High</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="footnote">
+    Model: <code>glm(Attrition ~ Age + BusinessTravel + OverTime + MonthlyIncome + DistanceFromHome + YearsAtCompany + YearsSinceLastPromotion + JobInvolvement + WorkLifeBalance + EnvironmentSatisfaction + JobSatisfaction + NumCompaniesWorked, family = binomial)</code><br><br>
+    Dataset: <a href="https://www.kaggle.com/datasets/pavansubhasht/ibm-hr-analytics-attrition-dataset" target="_blank" rel="noopener noreferrer">IBM HR Analytics Employee Attrition Dataset (Kaggle)</a>.<br>
+    This is an educational simulation tool and does not replace professional HR judgment.
+  </p>
+
+</div>
+
+<script>
+(function(){
+  var state = {
+    age: 33, income: 5000, distance: 9, years: 7, promo: 2, companies: 2,
+    travel: 'none', overtime: 'no',
+    involvement: 3, worklife: 3, envsat: 3, jobsat: 3
+  };
+
+  var COEF = {
+    intercept: 2.756,
+    age: -0.05119,
+    travel_freq: 1.655,
+    travel_rare: 0.8376,
+    overtime_yes: 1.635,
+    income: -0.0001050,
+    distance: 0.03304,
+    years: -0.07206,
+    promo: 0.1327,
+    involvement: -0.5818,
+    worklife: -0.2657,
+    envsat: -0.3691,
+    jobsat: -0.3428,
+    companies: 0.1399
+  };
+
+  function calcProb(){
+    var z = COEF.intercept;
+    z += COEF.age * state.age;
+    z += COEF.income * state.income;
+    z += COEF.distance * state.distance;
+    z += COEF.years * state.years;
+    z += COEF.promo * state.promo;
+    z += COEF.companies * state.companies;
+    if (state.travel === 'freq') z += COEF.travel_freq;
+    if (state.travel === 'rare') z += COEF.travel_rare;
+    if (state.overtime === 'yes') z += COEF.overtime_yes;
+    z += COEF.involvement * state.involvement;
+    z += COEF.worklife * state.worklife;
+    z += COEF.envsat * state.envsat;
+    z += COEF.jobsat * state.jobsat;
+    return 1 / (1 + Math.exp(-z));
+  }
+
+  function styleFor(p){
+    if (p < 0.15) return { fg: '#27500a', bg: '#eaf3de', label: 'Low risk' };
+    if (p < 0.40) return { fg: '#854f0b', bg: '#faeeda', label: 'Medium risk' };
+    return { fg: '#791f1f', bg: '#fcebeb', label: 'High risk' };
+  }
+
+  function render(){
+    var p = calcProb();
+    var out = document.getElementById('prob-out');
+    out.textContent = (p*100).toFixed(1) + '%';
+    var s = styleFor(p);
+    out.style.color = s.fg;
+
+    var tag = document.getElementById('prob-tag');
+    tag.textContent = s.label;
+    tag.style.color = s.fg;
+    tag.style.background = s.bg;
+
+    document.getElementById('age-out').textContent = state.age + ' years';
+    document.getElementById('income-out').textContent = '$' + state.income.toLocaleString('en-US');
+    document.getElementById('distance-out').textContent = state.distance + ' km';
+    document.getElementById('years-out').textContent = state.years + (state.years === 1 ? ' year' : ' years');
+    document.getElementById('promo-out').textContent = state.promo + (state.promo === 1 ? ' year' : ' years');
+    document.getElementById('companies-out').textContent = state.companies;
+
+    ['travel','overtime','involvement','worklife','envsat','jobsat'].forEach(function(id){
+      var group = document.getElementById(id);
+      var val = String(state[id]);
+      Array.prototype.forEach.call(group.children, function(btn){
+        if (btn.getAttribute('data-val') === val) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    });
+  }
+
+  document.getElementById('age').addEventListener('input', function(e){
+    state.age = parseInt(e.target.value, 10); render();
+  });
+  document.getElementById('income').addEventListener('input', function(e){
+    state.income = parseInt(e.target.value, 10); render();
+  });
+  document.getElementById('distance').addEventListener('input', function(e){
+    state.distance = parseInt(e.target.value, 10); render();
+  });
+  document.getElementById('years').addEventListener('input', function(e){
+    state.years = parseInt(e.target.value, 10); render();
+  });
+  document.getElementById('promo').addEventListener('input', function(e){
+    state.promo = parseInt(e.target.value, 10); render();
+  });
+  document.getElementById('companies').addEventListener('input', function(e){
+    state.companies = parseInt(e.target.value, 10); render();
+  });
+
+  ['travel','overtime','involvement','worklife','envsat','jobsat'].forEach(function(id){
+    document.getElementById(id).addEventListener('click', function(e){
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      var val = btn.getAttribute('data-val');
+      state[id] = (id === 'involvement' || id === 'worklife' || id === 'envsat' || id === 'jobsat')
+        ? parseInt(val, 10) : val;
+      render();
+    });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
